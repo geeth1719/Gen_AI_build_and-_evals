@@ -1,0 +1,13 @@
+RAG Trade offs and solution
+
+MMR uses an iterative selection process. It starts by grabbing a larger pool of candidates (e.g., top 20 most relevant chunks) and then picks chunks one by one using a scoring formula that penalizes redundancy.
+
+The formula for selecting the next document $d$ from candidate set $C$ into selected set $S$ is:$$\text{MMR} = \arg\max_{d \in C \setminus S} \left[ \lambda \cdot \text{Sim}_1(d, Q) - (1 - \lambda) \cdot \max_{d_j \in S} \text{Sim}_2(d, d_j) \right]$$Breaking Down the Components:$\text{Sim}_1(d, Q)$:
+
+ Similarity between the candidate document $d$ and the user's Query $Q$.$\max_{d_j \in S} \text{Sim}_2(d, d_j)$: 
+
+The highest similarity between candidate $d$ and any document already selected in set $S$.$\mathbf{\lambda}$ (Lambda Parameter, 0 to 1):
+
+ The control slider that balances Relevance vs. Diversity:$\lambda = 1.0$: Pure Similarity Search (Ignores diversity completely).$\lambda = 0.0$: 
+
+Pure Diversity (Ignores query relevance, picks completely different chunks).

@@ -1,0 +1,35 @@
+Here is a complete, modular pipeline for a Guardrail & Model Routing Engine.
+
+It works in two sequential stages:
+
+Guardrails Layer: Checks for prompt injection, safety violations, and masks PII (Emails, Phone numbers, SSNs) before any model touches the input.
+
+Dynamic Router: Calculates a Complexity & Intent Score based on token length, contextual depth, and task requirements to route simple tasks to a Small Language Model (SLM) and complex reasoning to a Large Language Model (LLM).
+
+Pipeline Architecture
+                       [ User / Invoice Query ]
+                                  │
+                                  ▼
+                     ┌─────────────────────────┐
+                     │    1. GUARDRAIL STAGE   │
+                     │  - Redact PII           │
+                     │  - Check Injection/Harm │
+                     └────────────┬────────────┘
+                                  │ (Cleaned Query)
+                                  ▼
+                     ┌─────────────────────────┐
+                     │   2. ROUTING ENGINE     │
+                     │  - Context Length       │
+                     │  - Task Complexity      │
+                     │  - Multi-step Reasoning │
+                     └────────────┬────────────┘
+                                  │
+             ┌────────────────────┴────────────────────┐
+             ▼                                         ▼
+   Score < Threshold                         Score ≥ Threshold
+┌──────────────────────────┐               ┌──────────────────────────┐
+│        SLM ROUTE         │               │        LLM ROUTE         │
+│ (e.g., Llama-3-8B / Phi) │               │ (e.g., GPT-4o / Claude)  │
+│  - Simple Extraction     │               │  - Complex Legal/Audit   │
+│  - Field Formatting      │               │  - Multi-page Synthesis  │
+└──────────────────────────┘               └──────────────────────────┘

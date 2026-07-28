@@ -1,0 +1,125 @@
+Instead of treating documents like a list of isolated paragraphs, GraphRAG turns them into a web of connected entities (people, places, products, concepts) using a Knowledge Graph.
+
+Entities (Nodes): [Product A], [Q3 Margins], [West Region]Relationships (Edges): [Product A] $\rightarrow$ has high returns in $\rightarrow$ [West Region]
+
+Now, when you ask a big-picture question, the AI follows the web to collect information from everywhere at once.
+
+
+**************************************************************************************************************************************
+
+
+2. Parent-Document Chunking (Small Search, Big Context)
+
+Search small, read big!
+
+Split documents into tiny child chunks (e.g., 50 words) for high-precision search matching.
+
+Link every child chunk to a larger parent document (e.g., a full page).
+
+When the vector store finds the matching tiny child chunk, it secretly hands the entire parent context to the LLM!
+
+
+*****************************************************************************************************************************************
+
+3. HyDE: Hypothetical Document Embeddings (Fake It Till You Find It)
+
+Use an LLM to generate a hypothetical (fake) answer first, then embed that fake answer to search the database.
+
+User asks: "Why did Q3 margins drop?"
+
+LLM generates a hypothetical answer: "Q3 margins dropped due to increased product return costs and raw material inflation." (Doesn't matter if it's factually accurate yet!)
+
+Search: Search the vector database using the fake answer's embedding. Because the fake answer sounds like a real document, it matches actual target documents easily!
+
+**********************************************************************************************************************************************
+
+
+example
+
+import uuid
+
+full_parent_page = (
+    "Carlsberg's Q3 revenue rose 4%. However, higher return rates on "
+    "bottles in the West region reduced overall profit margins by 1.2%."
+)
+
+parent_id = f"parent_{uuid.uuid4().hex[:8]}"
+
+def split_parent_into_children(parent_text, parent_id, chunk_size=35, overlap=10):
+    child_snippets = []
+    start = 0
+    chunk_index = 0
+    
+    while start < len(parent_text):
+        end = start + chunk_size
+        snippet_text = parent_text[start:end]
+        
+        child_entry = {
+            "child_id": f"{parent_id}_c{chunk_index}",
+            "parent_id": parent_id,
+            "chunk_index": chunk_index,
+            # THESE POSITIONS LINK THE SNIPPET TO THE EXACT SPOT IN THE PARENT PAGE:
+            "start_char": start,
+            "end_char": end,
+            "snippet_text": snippet_text
+        }
+        
+        child_snippets.append(child_entry)
+        
+        # Move window forward
+        start += (chunk_size - overlap)
+        chunk_index += 1
+        
+    return child_snippets
+
+# Execute auto-chunking
+child_snippets = split_parent_into_children(full_parent_page, parent_id)
+
+# Print the resulting database records
+
+
+
+
+
+
+
+
+
+******************************************************************
+vector db storage format
+
+
+
+
+
+
+
+
+[
+  {
+    "child_id": "parent_a1b2_c0",
+    "parent_id": "parent_a1b2",
+    "chunk_index": 0,
+    "start_char": 0,
+    "end_char": 35,
+    "snippet_text": "Carlsberg's Q3 revenue rose 4%. Ho"
+  },
+  {
+    "child_id": "parent_a1b2_c1",
+    "parent_id": "parent_a1b2",
+    "chunk_index": 1,
+    "start_char": 25,
+    "end_char": 60,
+    "snippet_text": "rose 4%. However, higher return rat"
+  },
+  {
+    "child_id": "parent_a1b2_c2",
+    "parent_id": "parent_a1b2",
+    "chunk_index": 2,
+    "start_char": 50,
+    "end_char": 85,
+    "snippet_text": "higher return rates on bottles in t"
+  }
+]
+for child in child_snippets:
+    print(child)
