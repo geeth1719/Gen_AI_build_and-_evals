@@ -1,0 +1,140 @@
+Here is a breakdown of how DeepEval calculates each of these four RAG metrics under the hood using its LLM-as-a-Judge methodology.
+
+1. Faithfulness (Hallucination Detection)
+Goal: Measures whether the LLM's actual_output is strictly supported by the retrieval_context without inventing facts.
+
+How it is calculated:
+Claim Extraction: DeepEval prompts the judge model (e.g., GPT-4o) to break down the actual_output into atomic, verifiable statements/claims.
+
+Context Verification: For each extracted claim, the judge model checks if it is explicitly supported or logically implied by any sentence in the retrieval_context.
+
+Score Calculation:
+
+Faithfulness Score= 
+Total Number of Claims Extracted
+Number of Truthful Claims Supported by Context
+​
+ 
+Example: If the output makes 4 distinct claims and 3 are present in the context while 1 is hallucinated, the score is  
+4
+3
+​
+ =0.75.
+
+2. Answer Relevancy
+Goal: Measures whether the LLM's actual_output directly answers the user's input query, regardless of whether the answer is factually correct.
+
+How it is calculated:
+Statements Extraction: The judge extracts key statements made in the actual_output.
+
+Irrelevant Statement Identification: The judge checks which of these statements directly address the user's prompt versus which ones are off-topic or redundant filler.
+
+Score Calculation:
+
+Answer Relevancy= 
+Total Statements in Actual Output
+Number of Relevant Statements
+​
+ 
+(Note: DeepEval also optionally calculates relevancy via embedding cosine similarity between generated queries from the answer and the original user query).
+
+3. Contextual Recall
+Goal: Measures whether your retrieval system retrieved all the necessary information required to construct the ground-truth (expected_output).
+
+How it is calculated:
+Expected Claims Extraction: The judge breaks down the expected_output (ground truth) into individual statements.
+
+Context Matching: It checks how many of these ground-truth statements are present somewhere in the retrieval_context.
+
+Score Calculation:
+
+Contextual Recall= 
+Total Statements in Ground Truth
+Ground Truth Statements Attributable to Retrieved Context
+​
+ 
+What it tells you: If this score is low, your vector search / retriever failed to fetch important chunks required to answer the question.
+
+4. Contextual Precision
+Goal: Measures whether the most relevant information chunks in retrieval_context are ranked at the top of the retrieved context list.
+
+How it is calculated:
+DeepEval calculates a variant of Mean Average Precision (mAP) over the ordered chunks in your retrieval_context:
+
+Node Evaluation: For every chunk K 
+i
+​
+  in the retrieved list, the judge assigns a binary classification: 1 if relevant to the user query, 0 if irrelevant.
+
+Precision at K Calculation: For each position k in the list, it calculates precision up to that node:
+
+Precision@k= 
+k
+Relevant chunks in top k positions
+​
+ 
+Cumulative Score:
+
+Contextual Precision= 
+Total Relevant Chunks
+∑ 
+k=1
+N
+​
+ (Precision@k×v 
+k
+​
+ )
+​
+ 
+(where v 
+k
+​
+ ∈{0,1} is 1 if chunk k is relevant, and 0 if not).
+
+What it tells you: If you retrieved 5 chunks, but the only useful chunk was sitting at position #5, your Contextual Precision score will be low. This signals you need a Reranker (like Cohere Rerank or BGE-Reranker) to push top results to index [0].
+
+Summary Matrix
+Metric	Inputs Analyzed	Evaluates What?	Common Fix if Score is Low
+Faithfulness	Output vs. Context	Hallucinations	Lower model temperature; refine system prompt
+Answer Relevancy	Output vs. Query	Off-topic / evasive answers	Tweak task instruction; enforce output constraints
+Contextual Recall	Context vs. Expected Output	Missing information in retrieval	Increase top-K chunks retrieved; improve chunking strategy
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+***********metaphor***********************
+
+
+The Teacher's Question is the User Query.
+
+Your Textbook Pages are the Retrieved Context.
+
+Your Answer on Paper is the Actual LLM Output.
+
+The Answer Key is the Expected Output (Ground Truth).
+
+
+
+
+
+
+***********************************************************
+
+LLM-as-a-Judge Evaluation: Set up automated evaluation pipelines using frameworks like Ragas or DeepEval to measure Faithfulness, Answer Relevance, and Context Recall.
+
+Tracing & Monitoring: Integrate tools like LangSmith, Phoenix (Arize), or Helicone to trace agent step execution, track latency, measure token costs, and debug failed loops.
+
+***************************************************************
+
+Contextual Precision	Context Order vs. Query	Ranking quality of chunks	Add a Reranking model step after vector search
